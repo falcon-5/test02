@@ -5,6 +5,7 @@
     android:layout_height="fill_parent"
     >
 <com.google.android.maps.MapView
+	android:id="@+id/MapView01"
 	android:layout_width="fill_parent"
 	android:layout_height="fill_parent"
 	android:apiKey="0c-2Q6BWQVUlsrr5bhDSJcokYbC_LhGg8b6f6dw"
