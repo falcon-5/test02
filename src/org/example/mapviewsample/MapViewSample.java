@@ -11,6 +11,10 @@ import android.graphics.Point;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.google.android.maps.GeoPoint;
@@ -54,9 +58,10 @@ public class MapViewSample extends MapActivity {
      * 地図上に表示されるオーバーレイのクラス
      */
     private class ConcreteOverlay extends Overlay
+    	implements OnClickListener
     {
     	//円の半径
-    	private static final int CIRCLE_RADIUS = 16;
+    	private static final int CIRCLE_RADIUS = 12;
 
     	//タップされた位置の緯度経度情報を保持するメンバ
     	GeoPoint mGeoPoint;
@@ -81,6 +86,57 @@ public class MapViewSample extends MapActivity {
 
     		//Geocoderを日本語環境でセット
     		mGeocoder = new Geocoder(context, Locale.JAPAN);
+
+    		//リソースIDからボタンを取得し、
+    		Button button = (Button)findViewById(R.id.Button01);
+    		//クリック時の処理を行うリスナーとして自身を登録
+    		button.setOnClickListener(this);
+    	}
+
+    	/**
+    	 * ボタンが押されたときに呼び出される
+    	 */
+    	public void onClick(View v)
+    	{
+    		switch(v.getId())
+    		{
+    		//押されたボタンがButton01なら
+    		case R.id.Button01:
+
+    			//EditTextのインスタンスを取得
+    			EditText editText = (EditText)findViewById(R.id.EditText01);
+
+    			//EditTextの現在の文字列を取得
+    			String text = editText.getText().toString();
+
+    			try
+    			{
+    				//文字列から住所情報を取得
+    				List<Address> addressList = mGeocoder.getFromLocationName(text, 1);
+    				if(addressList.size() > 0)
+    				{
+    					Address address =addressList.get(0);
+
+    					//Addressから緯度経度情報を取得しタップ位置にセット
+    					setTapPoint(new GeoPoint(
+    							(int)(address.getLatitude()*1E6),
+    							(int)(address.getLongitude()*1E6)
+    					));
+
+    					//MapViewのインスタンスを取得
+    					MapView mapView = (MapView)findViewById(R.id.MapView01);
+
+    					//検索結果の位置を画面の中央に
+    					mapView.getController().setCenter(mGeoPoint);
+    					//MapViewの拡大率を変更する
+    					mapView.getController().setZoom(15);
+    				}
+    			}
+    			catch(Exception e){}
+    			break;
+    		default:
+    			break;
+    		}
     	}
 
     	/**
@@ -90,51 +146,61 @@ public class MapViewSample extends MapActivity {
     	 */
     	public boolean onTap(GeoPoint point, MapView mapView)
     	{
-    		//タップされた位置の経度緯度情報をメンバにセット
-    		mGeoPoint = point;
-
-    		try
-    		{
-    			//画面上のTextViewのインスタンスを取得
-    			TextView textView = (TextView)findViewById(R.id.TextView01);
-
-    			//市町村名まで取得できたかどうか
-    			boolean success = false;
-
-    			//緯度経度から住所を取得
-    			List<Address> addressList = mGeocoder.getFromLocation(point.getLatitudeE6()/1E6, point.getLongitudeE6()/1E6, 5);
-
-    			//検索結果を順に処理
-    			for(Iterator<Address> it = addressList.iterator(); it.hasNext();)
-    			{
-    				Address address = it.next();
-
-    				//国名を取得
-    				String country = address.getCountryName();
-    				//都道府県
-    				String admin = address.getAdminArea();
-    				//市区町村
-    				String locality = address.getLocality();
-
-    				//市区町村名まで取得できていればTextViewを更新
-    				if(country != null && admin != null && locality != null)
-    				{
-    					textView.setText(country + admin + locality);
-    					success = true;
-    					break;
-    				}
-    			}
-
-    			//取得に失敗していればTextViewをエラー表記に変更
-    			if(!success) textView.setText("Error");
-
-    			//TextViewの再描画を行う
-    			textView.invalidate();
-    		}
-    		catch(Exception e){}
+    		//タップ位置をセットする
+    		setTapPoint(point);
 
     		//スーパークラスのonTapを呼び出す
     		return super.onTap(point, mapView);
+    	}
+
+    	/**
+    	 * タップした位置をセットするメソッド
+    	 * @param point タップされた位置の経度緯度情報
+    	 */
+    	private void setTapPoint(GeoPoint point)
+    	{
+			//タップされた位置の経度緯度情報をメンバにセット
+			mGeoPoint = point;
+
+			try
+			{
+				//画面上のTextViewのインスタンスを取得
+				TextView textView = (TextView)findViewById(R.id.TextView01);
+
+				//市町村名まで取得できたかどうか
+				boolean success = false;
+
+				//緯度経度から住所を取得
+				List<Address> addressList = mGeocoder.getFromLocation(point.getLatitudeE6()/1E6, point.getLongitudeE6()/1E6, 5);
+
+				//検索結果を順に処理
+				for(Iterator<Address> it = addressList.iterator(); it.hasNext();)
+				{
+					Address address = it.next();
+
+					//国名を取得
+					String country = address.getCountryName();
+					//都道府県
+					String admin = address.getAdminArea();
+					//市区町村
+					String locality = address.getLocality();
+
+					//市区町村名まで取得できていればTextViewを更新
+					if(country != null && admin != null && locality != null)
+					{
+						textView.setText(country + " : " + admin + locality);
+						success = true;
+						break;
+					}
+				}
+
+				//取得に失敗していればTextViewをエラー表記に変更
+				if(!success) textView.setText("Error");
+
+				//TextViewの再描画を行う
+				textView.invalidate();
+			}
+			catch(Exception e){}
     	}
 
     	/**
