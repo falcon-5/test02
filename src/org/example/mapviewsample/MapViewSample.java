@@ -2,12 +2,15 @@ package org.example.mapviewsample;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+
+import org.xmlpull.v1.XmlPullParser;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -16,6 +19,8 @@ import android.graphics.Point;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
+import android.util.Log;
+import android.util.Xml;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -352,7 +357,64 @@ public class MapViewSample extends MapActivity {
     	 */
     	private void parseXml(byte[] xml_byte)
     	{
+    		//XMLparserとしてXmlPullParserを利用
+    		XmlPullParser parser = Xml.newPullParser();
     		
+    		try
+    		{
+    			//XMLパーサに引数のバイト列をセット
+    			parser.setInput(new StringReader(new String(xml_byte, "UTF-8")));
+    			
+    			//最初の要素を取得
+    			int eventType = parser.getEventType();
+    			
+    			boolean finish = false;
+    			while(!finish)
+    			{
+    				switch(eventType)
+    				{
+    					//タグの先頭
+    					case XmlPullParser.START_TAG:
+    						//タグの名前と深さを出力
+    						Log.d("", "type:START_TAG name:" + parser.getName() + " depth:" + parser.getDepth());
+    						break;
+    						
+    					//タグの末尾
+    					case XmlPullParser.END_TAG:
+    						//タグの名前を出力
+    						Log.d("", "type:END_TAG name:" + parser.getName());
+    						break;
+    					//テキスト
+    					case XmlPullParser.TEXT:
+    						//改行を置換
+    						String text = parser.getText().replace("\r", "");
+    						text = text.replace("\n", "");
+    						//半角スペースを置換
+    						text = text.replace(" ", "");
+    						//その上で、中身があれば出力
+    						if(text.length() > 0)
+    							Log.d("", "type:TEXT text:" + text);
+    						break;
+    					//XMLの先頭
+    					case XmlPullParser.START_DOCUMENT:
+    						Log.d("", "type:START_DOCUMENT");
+    						break;
+    					//XMLの末尾
+    					case XmlPullParser.END_DOCUMENT:
+    						Log.d("", "type:END_DOCUMENT");
+    						finish = true;
+    						break;
+    					default:
+    						break;
+    				}
+    				
+    				if(!finish)
+    				{
+    					eventType = parser.next();
+    				}
+    			}
+    		}
+    		catch(Exception e){}
     	}
     }
 }
