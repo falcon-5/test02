@@ -22,18 +22,42 @@
 		android:layout_height="wrap_content"
 		/>
     </LinearLayout>
-<TextView
-	android:id="@+id/TextView01"
-	android:layout_width="fill_parent"
-	android:layout_height="wrap_content"
-	android:textColor="@android:color/black"
-	android:background="@android:color/white"
-	android:textSize="12pt"
-	/>
-<com.google.android.maps.MapView
-	android:id="@+id/MapView01"
-	android:layout_width="fill_parent"
-	android:layout_height="fill_parent"
-	android:apiKey="0c-2Q6BWQVUlsrr5bhDSJcokYbC_LhGg8b6f6dw"
-	/>
+	<TextView
+		android:id="@+id/TextView01"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:textColor="@android:color/black"
+		android:background="@android:color/white"
+		android:textSize="12pt"
+		/>
+	<LinearLayout
+		android:orientation="horizontal"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:background="@android:color/white"
+		>
+		<ImageView
+			android:id="@+id/ImageView01"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:paddingRight="16px"
+			/>
+		<TextView
+			android:id="@+id/TextView02"
+			android:layout_width="wrap_content"
+			android:layout_height="fill_parent"
+			android:textColor="@android:color/black"
+			android:background="@android:color/white"
+			android:gravity="center_vertical"
+			android:textSize="12pt"
+			/>
+	</LinearLayout>
+	<com.google.android.maps.MapView
+		android:id="@+id/MapView01"
+		android:layout_width="fill_parent"
+		android:layout_height="fill_parent"
+		android:apiKey="0c-2Q6BWQVUlcHAQ9gpmV3bHbGtCigvAYXl-ZyQ"
+		/>
 </LinearLayout>
+<!-- 自宅
+		android:apiKey="0c-2Q6BWQVUlsrr5bhDSJcokYbC_LhGg8b6f6dw"-->

@@ -1,5 +1,10 @@
 package org.example.mapviewsample;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.DecimalFormat;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -232,6 +237,122 @@ public class MapViewSample extends MapActivity {
     				canvas.drawCircle(point.x, point.y, CIRCLE_RADIUS, mCirclePaint);
     			}
     		}
+    	}
+    	
+    	/**
+    	 * WeatherAPI(http://www.worldweatheronline.com/)を利用して天気情報を取得しビューに反映
+    	 * @param point 緯度経度情報
+    	 */
+    	private void getWeatherXML(GeoPoint point)
+    	{
+    		byte[] xml_byte = null;
+    		
+    		try
+    		{
+    			//10進数のFormatオブジェクト
+    			DecimalFormat df = new DecimalFormat();
+    			
+    			//数値だけを出力するよう指定
+    			df.applyPattern("0");
+    			//小数第2位まで出力するよう指定
+    			df.setMinimumFractionDigits(2);
+    			df.setMaximumFractionDigits(2);
+    			
+    			//緯度と経度を文字列に変換
+    			String latitude_str =df.format(point.getLatitudeE6()/1E6);
+    			String longitude_str =df.format(point.getLongitudeE6()/1E6);
+    			
+    			//WeatherAPIのURL
+    			String api_key = "10afa2b383153522111705";
+    			String weather_url = "http://www.worldweatheronline.com/feed/weather.ashx?q=" + latitude_str + "," + longitude_str + "&format=xml&num_of_days=1&key=" + api_key;
+    			
+    			//WeatherAPIから天気情報XMLを取得
+    			xml_byte = getHttp(weather_url);
+    		}
+    		catch(Exception e){}
+    		
+    		if(xml_byte == null) return;
+    		//XMLをパースする
+    		parseXml(xml_byte);
+    	}
+    	
+    	/**
+    	 * HTTP GETでデータを取得し、byte列として返す
+    	 * @param url_str URL文字列
+    	 * @return 取得したデータ。取得に失敗したらnullが返される
+    	 */
+    	private byte[] getHttp(String url_str)
+    	{
+    		//HTTP接続
+    		HttpURLConnection connect = null;
+    		
+    		//入力ストリーム
+    		InputStream istream = null;
+    		
+    		//byte型配列出力ストリーム
+    		ByteArrayOutputStream ostream = null;
+    		
+    		//結果として返すbyte型配列
+    		byte[] result = null;
+    		
+    		try
+    		{
+    			//URLオブジェクトを生成
+    			URL url = new URL(url_str);
+    			
+    			//HTTP接続用オブジェクトを生成
+    			connect = (HttpURLConnection)url.openConnection();
+    			
+    			//HTTPリクエストをGETにセット
+    			connect.setRequestMethod("GET");
+    			
+    			//入力ストリームオブジェクトを取得
+    			istream = connect.getInputStream();
+    			
+    			//出力ストリームオブジェクトを取得
+    			ostream = new ByteArrayOutputStream();
+    			
+    			byte[] buf = new byte[1024];
+    			while(true)
+    			{
+    				//入力ストリームからデータを取得
+    				int size = istream.read(buf);
+    				
+    				//取得できなくなったらループ終了
+    				if(size <= 0) break;
+    				
+    				//取得したデータを出力ストリームに書き込む
+    				ostream.write(buf, 0, size);
+    			}
+    			//byte型の配列としてデータを取り出す
+    			result = ostream.toByteArray();
+    		}
+    		catch(Exception e){}
+
+    		finally
+    		{
+    			//HTTP接続を切断
+    			if(connect != null) connect.disconnect();
+    			
+    			try
+    			{
+    				//入力ストリームを閉じる
+    				if(istream != null) istream.close();
+    				//出力ストリームを閉じる
+    				if(ostream != null) ostream.close();
+    			}
+    			catch(Exception e){}
+    		}
+    		return result;
+    	}
+    	
+    	/**
+    	 * WeatherAPIから取得した天気情報XMLを解析しビューに反映
+    	 * @param xml_byte 天気情報XMLのバイト列
+    	 */
+    	private void parseXml(byte[] xml_byte)
+    	{
+    		
     	}
     }
 }
