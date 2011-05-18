@@ -13,6 +13,8 @@ import java.util.Locale;
 import org.xmlpull.v1.XmlPullParser;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
@@ -25,6 +27,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.android.maps.GeoPoint;
@@ -198,19 +201,22 @@ public class MapViewSample extends MapActivity {
 					//市区町村名まで取得できていればTextViewを更新
 					if(country != null && admin != null && locality != null)
 					{
-						textView.setText(country + " : " + admin + locality);
+						textView.setText(admin + locality + " : " + country);
 						success = true;
 						break;
 					}
 				}
 
 				//取得に失敗していればTextViewをエラー表記に変更
-				if(!success) textView.setText("Error");
+				if(!success) textView.setText("Get Logitude&Latitude Error");
 
 				//TextViewの再描画を行う
 				textView.invalidate();
 			}
 			catch(Exception e){}
+
+			//緯度経度情報を用いてWeatherAPIにアクセス
+			getWeatherXML(point);
     	}
 
     	/**
@@ -243,7 +249,7 @@ public class MapViewSample extends MapActivity {
     			}
     		}
     	}
-    	
+
     	/**
     	 * WeatherAPI(http://www.worldweatheronline.com/)を利用して天気情報を取得しビューに反映
     	 * @param point 緯度経度情報
@@ -251,36 +257,36 @@ public class MapViewSample extends MapActivity {
     	private void getWeatherXML(GeoPoint point)
     	{
     		byte[] xml_byte = null;
-    		
+
     		try
     		{
     			//10進数のFormatオブジェクト
     			DecimalFormat df = new DecimalFormat();
-    			
+
     			//数値だけを出力するよう指定
     			df.applyPattern("0");
     			//小数第2位まで出力するよう指定
     			df.setMinimumFractionDigits(2);
     			df.setMaximumFractionDigits(2);
-    			
+
     			//緯度と経度を文字列に変換
     			String latitude_str =df.format(point.getLatitudeE6()/1E6);
     			String longitude_str =df.format(point.getLongitudeE6()/1E6);
-    			
+
     			//WeatherAPIのURL
     			String api_key = "10afa2b383153522111705";
     			String weather_url = "http://www.worldweatheronline.com/feed/weather.ashx?q=" + latitude_str + "," + longitude_str + "&format=xml&num_of_days=1&key=" + api_key;
-    			
+
     			//WeatherAPIから天気情報XMLを取得
     			xml_byte = getHttp(weather_url);
     		}
     		catch(Exception e){}
-    		
+
     		if(xml_byte == null) return;
     		//XMLをパースする
     		parseXml(xml_byte);
     	}
-    	
+
     	/**
     	 * HTTP GETでデータを取得し、byte列として返す
     	 * @param url_str URL文字列
@@ -290,42 +296,42 @@ public class MapViewSample extends MapActivity {
     	{
     		//HTTP接続
     		HttpURLConnection connect = null;
-    		
+
     		//入力ストリーム
     		InputStream istream = null;
-    		
+
     		//byte型配列出力ストリーム
     		ByteArrayOutputStream ostream = null;
-    		
+
     		//結果として返すbyte型配列
     		byte[] result = null;
-    		
+
     		try
     		{
     			//URLオブジェクトを生成
     			URL url = new URL(url_str);
-    			
+
     			//HTTP接続用オブジェクトを生成
     			connect = (HttpURLConnection)url.openConnection();
-    			
+
     			//HTTPリクエストをGETにセット
     			connect.setRequestMethod("GET");
-    			
+
     			//入力ストリームオブジェクトを取得
     			istream = connect.getInputStream();
-    			
+
     			//出力ストリームオブジェクトを取得
     			ostream = new ByteArrayOutputStream();
-    			
+
     			byte[] buf = new byte[1024];
     			while(true)
     			{
     				//入力ストリームからデータを取得
     				int size = istream.read(buf);
-    				
+
     				//取得できなくなったらループ終了
     				if(size <= 0) break;
-    				
+
     				//取得したデータを出力ストリームに書き込む
     				ostream.write(buf, 0, size);
     			}
@@ -338,7 +344,7 @@ public class MapViewSample extends MapActivity {
     		{
     			//HTTP接続を切断
     			if(connect != null) connect.disconnect();
-    			
+
     			try
     			{
     				//入力ストリームを閉じる
@@ -350,7 +356,7 @@ public class MapViewSample extends MapActivity {
     		}
     		return result;
     	}
-    	
+
     	/**
     	 * WeatherAPIから取得した天気情報XMLを解析しビューに反映
     	 * @param xml_byte 天気情報XMLのバイト列
@@ -359,62 +365,100 @@ public class MapViewSample extends MapActivity {
     	{
     		//XMLparserとしてXmlPullParserを利用
     		XmlPullParser parser = Xml.newPullParser();
-    		
+
+    		//摂氏温度
+    		String temp_c = null;
+    		//天気のアイコンURL
+    		String weather_icon_url = null;
+
     		try
     		{
     			//XMLパーサに引数のバイト列をセット
     			parser.setInput(new StringReader(new String(xml_byte, "UTF-8")));
-    			
+
     			//最初の要素を取得
     			int eventType = parser.getEventType();
-    			
-    			boolean finish = false;
-    			while(!finish)
+
+    			//現在位置がcurrent_conditionタグ内かどうか
+    			boolean tag_current_condition = false;
+
+    			//最後まで読み込まれるか、摂氏と天気アイコンURLの両方が取得できたら終了
+    			while(eventType != XmlPullParser.END_DOCUMENT && (temp_c == null || weather_icon_url == null))
     			{
     				switch(eventType)
     				{
     					//タグの先頭
     					case XmlPullParser.START_TAG:
-    						//タグの名前と深さを出力
-    						Log.d("", "type:START_TAG name:" + parser.getName() + " depth:" + parser.getDepth());
+    						//current_conditionタグ内に入っているかどうか
+    						if(parser.getName().equals("current_condition"))
+    							tag_current_condition = true;
+
+    						//current_conditionタグ内の、
+    						if(tag_current_condition)
+    						{
+    							//Temp_Cタグ（摂氏の気温）か、
+    							if(parser.getName().equalsIgnoreCase("temp_C"))
+    							{
+    								//パーサを進めて
+    								eventType = parser.next();
+    								if(eventType == XmlPullParser.TEXT)
+    								{
+    									//テキストを取得
+    									temp_c = parser.getText();
+    								}
+    							}
+    							//WeatherIconUrlタグ（天気アイコンのURLなら）
+    							else if(parser.getName().equals("weatherIconUrl"))
+    							{
+    								//パーサを進めて
+    								eventType = parser.next();
+    								if(eventType == XmlPullParser.TEXT)
+    								{
+    									//テキストを取得
+    									weather_icon_url = parser.getText();
+    								}
+    							}
+    						}
     						break;
-    						
+
     					//タグの末尾
     					case XmlPullParser.END_TAG:
-    						//タグの名前を出力
-    						Log.d("", "type:END_TAG name:" + parser.getName());
-    						break;
-    					//テキスト
-    					case XmlPullParser.TEXT:
-    						//改行を置換
-    						String text = parser.getText().replace("\r", "");
-    						text = text.replace("\n", "");
-    						//半角スペースを置換
-    						text = text.replace(" ", "");
-    						//その上で、中身があれば出力
-    						if(text.length() > 0)
-    							Log.d("", "type:TEXT text:" + text);
-    						break;
-    					//XMLの先頭
-    					case XmlPullParser.START_DOCUMENT:
-    						Log.d("", "type:START_DOCUMENT");
-    						break;
-    					//XMLの末尾
-    					case XmlPullParser.END_DOCUMENT:
-    						Log.d("", "type:END_DOCUMENT");
-    						finish = true;
-    						break;
-    					default:
+    						//current_conditionタグから出たかどうか
+    						if(parser.getName().equals("current_condition"))
+    							tag_current_condition = false;
     						break;
     				}
-    				
-    				if(!finish)
-    				{
-    					eventType = parser.next();
-    				}
+    				eventType = parser.next();
     			}
     		}
     		catch(Exception e){}
+
+    		if(weather_icon_url != null)
+    		{
+    			//天気情報アイコンを取得
+    			byte[] byteArray = getHttp(weather_icon_url);
+    			//天気情報のBMPを生成
+    			Bitmap weather_icon_bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
+
+    			//天気情報のアイコンを表示するImageViewのインスタンスを取得
+    			ImageView imageView = (ImageView)findViewById(R.id.ImageView01);
+    			imageView.setImageBitmap(weather_icon_bitmap);
+
+    			//ImageViewの再描画を行う（変更を反映させるため）
+    			imageView.invalidate();
+    		}
+
+    		//気温を表示するTextViewのインスタンスを取得
+    		TextView textView = (TextView)findViewById(R.id.TextView02);
+
+    		//気温をセット
+    		if(temp_c != null)
+    			textView.setText(temp_c + "℃");
+    		else
+    			textView.setText("Get WeatherInfo Error");
+
+    		//TextViewの再描画を行う(変更を反映させるため）
+    		textView.invalidate();
     	}
     }
 }
